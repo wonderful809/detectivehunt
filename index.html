@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ETRONS 2K26 — Detective Hunt</title>
+  <meta name="description"
+    content="ETRONS 2K26 Detective Hunt — Scan QR codes, solve clues, earn points, and race to the top!">
+  <meta name="theme-color" content="#0a0e27">
+  <link rel="stylesheet" href="style.css">
+  <script src="lib/supabase.min.js"></script>
+  <script src="lib/html5-qrcode.min.js"></script>
+</head>
+
+<body>
+  <!-- Animated Background -->
+  <div class="bg-animation">
+    <div class="bg-grid"></div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+    <div class="floating-icons">
+      <span class="float-icon" style="--i:1;">🔍</span>
+      <span class="float-icon" style="--i:2;">🕵️</span>
+      <span class="float-icon" style="--i:3;">🧩</span>
+      <span class="float-icon" style="--i:4;">🗝️</span>
+      <span class="float-icon" style="--i:5;">📋</span>
+      <span class="float-icon" style="--i:6;">🔦</span>
+      <span class="float-icon" style="--i:7;">🎯</span>
+      <span class="float-icon" style="--i:8;">💡</span>
+    </div>
+  </div>
+
+  <div class="app-container">
+
+    <!-- ═══════ CREATE TEAM VIEW ═══════ -->
+    <div id="login-view" class="view active">
+      <div class="login-screen">
+        <div class="brand-logo">
+          <span class="brand-icon">🕵️</span>
+          <h1 class="brand-title">ETRONS <span class="brand-year">2K26</span></h1>
+          <div class="brand-tagline">DETECTIVE HUNT</div>
+        </div>
+        <div class="login-form glass-card">
+          <h3 style="text-align:center;margin-bottom:var(--space-lg);color:var(--amber);">🔍 Create Your Team</h3>
+          <div class="form-group">
+            <label>Team Name</label>
+            <input type="text" id="team-name-input" class="form-input" placeholder="Enter a unique team name"
+              maxlength="30">
+          </div>
+          <div class="form-group">
+            <label>Number of Members</label>
+            <select id="member-count" class="form-select">
+              <option value="3">👥 3 Members</option>
+              <option value="4">👥 4 Members</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Team Password</label>
+            <input type="password" id="team-password" class="form-input" placeholder="Create a team password">
+          </div>
+          <button id="create-btn" class="btn btn-primary btn-block btn-lg" onclick="handleCreateTeam()">
+            🚀 Create Team & Enter
+          </button>
+          <div class="divider" style="margin:var(--space-lg) 0;"></div>
+          <p style="text-align:center;color:var(--text-muted);font-size:0.8125rem;margin-bottom:var(--space-sm);">
+            Already have a team?</p>
+          <button class="btn btn-outline btn-block" onclick="toggleLoginMode()">🔑 Login to Existing Team</button>
+
+          <!-- Login mode (hidden by default) -->
+          <div id="login-mode" style="display:none;margin-top:var(--space-lg);">
+            <div class="form-group">
+              <label>Team Name</label>
+              <input type="text" id="login-team-name" class="form-input" placeholder="Your team name">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="login-password" class="form-input" placeholder="Team password">
+            </div>
+            <button class="btn btn-primary btn-block" onclick="handleLogin()">🕵️ Enter the Hunt</button>
+          </div>
+
+          <p id="login-error"
+            style="color:var(--error);text-align:center;margin-top:var(--space-md);font-size:0.875rem;display:none;">
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ WAIT VIEW ═══════ -->
+    <div id="wait-view" class="view">
+      <div class="brand-logo" style="padding-top:var(--space-xl);">
+        <span class="brand-icon" style="font-size:2.5rem;">🕵️</span>
+        <h1 class="brand-title" style="font-size:1.5rem;">ETRONS <span class="brand-year">2K26</span></h1>
+      </div>
+      <div class="wait-screen glass-card">
+        <div class="wait-icon">⏳</div>
+        <h2>Waiting for Game Start</h2>
+        <p>The hunt hasn't begun yet. Stand by, detective...</p>
+        <p style="margin-top:var(--space-md);color:var(--amber);font-weight:700;" id="wait-team-name"></p>
+        <p style="margin-top:var(--space-sm);color:var(--text-muted);font-size:0.875rem;" id="wait-team-members"></p>
+      </div>
+    </div>
+
+    <!-- ═══════ MAIN GAME VIEW ═══════ -->
+    <div id="game-view" class="view">
+      <!-- Game Header -->
+      <div class="game-header">
+        <div class="game-header-left">
+          <span style="font-size:1.25rem;">🕵️</span>
+          <div>
+            <div class="brand-mini">ETRONS 2K26</div>
+            <div id="game-team-name" style="font-size:0.75rem;color:var(--text-muted);"></div>
+          </div>
+        </div>
+        <div class="game-header-right">
+          <div class="live-timer" id="live-timer">
+            <span class="timer-icon">⏱️</span>
+            <span class="timer-value" id="timer-display">00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Points & Progress -->
+      <div class="score-bar glass-card glass-card-sm">
+        <div class="score-item">
+          <div class="score-value text-amber" id="points-display">0</div>
+          <div class="score-label">Points</div>
+        </div>
+        <div class="score-divider"></div>
+        <div class="score-item">
+          <div class="score-value" id="clue-display">0/10</div>
+          <div class="score-label">Clues Solved</div>
+        </div>
+        <div class="score-divider"></div>
+        <div class="score-item">
+          <div class="score-value" style="color:var(--success);" id="max-points">20</div>
+          <div class="score-label">Max Points</div>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-section">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Current Clue -->
+      <div class="clue-card" id="clue-card">
+        <div class="clue-badge">📋 Clue <span id="clue-number-badge">0</span></div>
+        <p class="clue-text" id="clue-text">Waiting for clue...</p>
+        <div class="clue-hint" id="clue-hint" style="display:none;"></div>
+      </div>
+
+      <!-- BIG Scan Button -->
+      <div class="scan-btn-wrapper">
+        <button class="scan-btn" id="scan-trigger" onclick="openScanner()">
+          <span class="scan-icon">📷</span>
+          SCAN QR
+        </button>
+      </div>
+    </div>
+
+    <!-- ═══════ FINISHED VIEW ═══════ -->
+    <div id="finish-view" class="view">
+      <div class="brand-logo" style="padding-top:var(--space-xl);">
+        <span class="brand-icon" style="font-size:2.5rem;">🕵️</span>
+        <h1 class="brand-title" style="font-size:1.5rem;">ETRONS <span class="brand-year">2K26</span></h1>
+      </div>
+      <div class="finish-banner glass-card">
+        <div class="trophy">🏆</div>
+        <h2>Case Solved!</h2>
+        <p style="color:var(--text-secondary);margin-bottom:var(--space-sm);">All 10 clues cracked!</p>
+        <div class="finish-stats">
+          <div class="finish-stat">
+            <span class="finish-stat-value text-amber" id="finish-points">20</span>
+            <span class="finish-stat-label">Points</span>
+          </div>
+          <div class="finish-stat">
+            <span class="finish-stat-value" id="finish-time" style="color:var(--success);">00:00</span>
+            <span class="finish-stat-label">Time</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════ LEADERBOARD VIEW ═══════ -->
+    <div id="leaderboard-view" class="view">
+      <div class="section-header">
+        <h3>🏆 Live Leaderboard</h3>
+        <button class="btn btn-sm btn-outline" onclick="loadLeaderboard()">↻</button>
+      </div>
+      <ul class="leaderboard-list" id="leaderboard-list">
+        <li class="empty-state">
+          <div class="empty-icon">📊</div>
+          <p>Loading...</p>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <!-- ═══════ BOTTOM NAVIGATION ═══════ -->
+  <nav class="bottom-nav" id="bottom-nav" style="display:none;">
+    <button class="nav-btn active" data-view="game-view" onclick="switchView('game-view', this)">
+      <span class="nav-icon">🔍</span> Hunt
+    </button>
+    <button class="nav-btn" data-view="leaderboard-view" onclick="switchView('leaderboard-view', this)">
+      <span class="nav-icon">🏆</span> Ranks
+    </button>
+  </nav>
+
+  <!-- ═══════ QR SCANNER OVERLAY ═══════ -->
+  <div class="scanner-overlay" id="scanner-overlay">
+    <div class="scanner-header">
+      <span class="scanner-title">📷 Scan QR Code</span>
+      <button class="scanner-close" onclick="closeScanner()">✕</button>
+    </div>
+    <div id="qr-reader"></div>
+    <p class="scanner-hint">Point your back camera at a QR code</p>
+  </div>
+
+  <!-- ═══════ FEEDBACK: SUCCESS (+2 Points) ═══════ -->
+  <div class="feedback-overlay feedback-success" id="feedback-success">
+    <div class="feedback-icon">🎉</div>
+    <h2 class="feedback-title">Congratulations!</h2>
+    <p class="feedback-points">+2 Points</p>
+    <p class="feedback-message" id="success-message">Correct answer! Great work, detective!</p>
+    <button class="btn btn-success btn-lg" onclick="closeFeedback('success')">Next Clue →</button>
+  </div>
+
+  <!-- ═══════ FEEDBACK: WRONG QR ═══════ -->
+  <div class="feedback-overlay feedback-wrong" id="feedback-wrong">
+    <div class="feedback-icon">🚫</div>
+    <h2 class="feedback-title">Wrong QR!</h2>
+    <p class="feedback-message" id="wrong-message">Scan another QR code</p>
+    <button class="btn btn-danger btn-lg" onclick="closeFeedback('wrong')">Try Again</button>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>

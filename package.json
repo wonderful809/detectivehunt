@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "dotenv": "^17.3.1",
+    "html5-qrcode": "^2.3.8",
+    "pg": "^8.19.0",
+    "qrcode": "^1.5.4"
+  }
+}

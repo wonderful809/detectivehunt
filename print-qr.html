@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETRONS 2K26 — Print QR Codes</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #111;
+            color: #fff;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: #f59e0b;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .controls button {
+            background: #f59e0b;
+            color: #000;
+            border: none;
+            padding: 12px 32px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 8px;
+        }
+
+        .controls button:hover {
+            background: #d97706;
+        }
+
+        .controls button.secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        /* ─── Clue Section ─── */
+        .clue-section {
+            margin-bottom: 40px;
+            border: 2px solid #333;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        .clue-header {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #000;
+            padding: 12px 20px;
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .clue-header .type-tag {
+            float: right;
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
+
+        .qr-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .qr-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            position: relative;
+        }
+
+        .qr-card.correct {
+            border: 3px solid #22c55e;
+        }
+
+        .qr-card.fake {
+            border: 3px solid #ef4444;
+        }
+
+        .qr-card .badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .qr-card.correct .badge {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        .qr-card.fake .badge {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .qr-card canvas {
+            display: block;
+            margin: 8px auto;
+        }
+
+        .qr-card .qr-label {
+            font-family: 'Courier New', monospace;
+            font-size: 0.7rem;
+            color: #333;
+            word-break: break-all;
+            margin-top: 8px;
+            font-weight: 700;
+        }
+
+        /* ─── Print Styles ─── */
+        @media print {
+            body {
+                background: #fff;
+                color: #000;
+                padding: 0;
+            }
+
+            h1,
+            .subtitle,
+            .controls {
+                display: none;
+            }
+
+            .clue-section {
+                border: 2px solid #000;
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+                background: #fff;
+            }
+
+            .clue-header {
+                background: #eee !important;
+                color: #000 !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .qr-card {
+                border-width: 2px !important;
+            }
+
+            .qr-card.correct {
+                border-color: #22c55e !important;
+            }
+
+            .qr-card.fake {
+                border-color: #ef4444 !important;
+            }
+
+            .qr-card .badge {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+
+        /* ─── Print Individual Cards (cut-out mode) ─── */
+        .print-cutout .clue-section {
+            border: none;
+            background: none;
+            margin-bottom: 0;
+        }
+
+        .print-cutout .clue-header {
+            display: none;
+        }
+
+        .print-cutout .qr-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            padding: 8px;
+        }
+
+        .print-cutout .qr-card {
+            width: 180px;
+            border: 2px dashed #999;
+            page-break-inside: avoid;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🕵️ ETRONS 2K26 — QR Codes</h1>
+    <p class="subtitle">40 QR Codes total: 10 Correct (green border) + 30 Fake (red border). Print this page to get all
+        codes.</p>
+
+    <div class="controls">
+        <button onclick="window.print()">🖨️ Print All QR Codes</button>
+        <button class="secondary" onclick="downloadAll()">💾 Download All as Images</button>
+    </div>
+
+    <div id="qr-container"></div>
+
+    <script>
+        const QR_DATA = [];
+        const CLUE_LABELS = {
+            1: 'Bench in the Green Space',
+            2: 'Classroom 323',
+            3: 'Visvesvaraya Hall',
+            4: 'Water Cooler / Canteen',
+            5: 'Snack Distributor',
+            6: 'Vehicle AP39FK7467',
+            7: 'Kalam Notice Board',
+            8: 'Grievance Drop Box',
+            9: 'Main Stage / Auditorium',
+            10: 'Event Organizer (FINISH!)'
+        };
+
+        for (let i = 1; i <= 10; i++) {
+            QR_DATA.push(
+                { clue: i, value: `HUNT-CLUE-${i}-CORRECT`, type: 'correct' },
+                { clue: i, value: `HUNT-CLUE-${i}-FAKE-A`, type: 'fake' },
+                { clue: i, value: `HUNT-CLUE-${i}-FAKE-B`, type: 'fake' },
+                { clue: i, value: `HUNT-CLUE-${i}-FAKE-C`, type: 'fake' }
+            );
+        }
+
+        async function generateAll() {
+            const container = document.getElementById('qr-container');
+
+            for (let clueNum = 1; clueNum <= 10; clueNum++) {
+                const section = document.createElement('div');
+                section.className = 'clue-section';
+
+                const header = document.createElement('div');
+                header.className = 'clue-header';
+                header.innerHTML = `📍 Clue ${clueNum} — ${CLUE_LABELS[clueNum]} <span class="type-tag">4 QR codes</span>`;
+                section.appendChild(header);
+
+                const grid = document.createElement('div');
+                grid.className = 'qr-grid';
+
+                const clueQRs = QR_DATA.filter(q => q.clue === clueNum);
+
+                for (const qr of clueQRs) {
+                    const card = document.createElement('div');
+                    card.className = `qr-card ${qr.type}`;
+
+                    const badge = document.createElement('div');
+                    badge.className = 'badge';
+                    badge.textContent = qr.type === 'correct' ? '✅ CORRECT' : '❌ FAKE';
+                    card.appendChild(badge);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `qr-${qr.value}`;
+                    card.appendChild(canvas);
+
+                    await QRCode.toCanvas(canvas, qr.value, {
+                        width: 160,
+                        margin: 2,
+                        color: { dark: '#000000', light: '#ffffff' }
+                    });
+
+                    const label = document.createElement('div');
+                    label.className = 'qr-label';
+                    label.textContent = qr.value;
+                    card.appendChild(label);
+
+                    grid.appendChild(card);
+                }
+
+                section.appendChild(grid);
+                container.appendChild(section);
+            }
+        }
+
+        async function downloadAll() {
+            for (const qr of QR_DATA) {
+                const canvas = document.getElementById(`qr-${qr.value}`);
+                if (!canvas) continue;
+                const link = document.createElement('a');
+                link.download = `${qr.value}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                await new Promise(r => setTimeout(r, 100));
+            }
+        }
+
+        generateAll();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETRONS 2K26 — Database Setup</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+    <div class="bg-animation">
+        <div class="bg-grid"></div>
+        <div class="bg-orb bg-orb-1"></div>
+    </div>
+    <div class="app-container">
+        <div class="brand-logo">
+            <span class="brand-icon">🛠️</span>
+            <h1 class="brand-title" style="font-size:1.5rem;">ETRONS <span class="brand-year">2K26</span></h1>
+            <div class="brand-tagline">DATABASE SETUP</div>
+        </div>
+
+        <div id="status-box" class="glass-card" style="margin-bottom:var(--space-lg);">
+            <h3 style="margin-bottom:var(--space-md);color:var(--amber);">📊 Setup Progress</h3>
+            <div id="log"
+                style="font-family:'JetBrains Mono',monospace;font-size:0.8125rem;color:var(--text-secondary);max-height:500px;overflow-y:auto;line-height:2;">
+            </div>
+        </div>
+
+        <button id="setup-btn" class="btn btn-primary btn-block btn-lg" onclick="runSetup()">
+            🚀 Run Setup & Fix
+        </button>
+
+        <div id="done-box" style="display:none;margin-top:var(--space-xl);text-align:center;">
+            <div style="font-size:3rem;margin-bottom:var(--space-md);">✅</div>
+            <h2 style="color:var(--success);margin-bottom:var(--space-sm);">All Good!</h2>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg);">Your database is ready for ETRONS
+                2K26.</p>
+            <a href="index.html" class="btn btn-primary">🔍 Open Player App</a>
+            <a href="admin.html" class="btn btn-secondary" style="margin-left:var(--space-sm);">🛡️ Admin Panel</a>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://deumynymzuxtwvzbbbwi.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable__l2gVno_pyfZrT7v5fAJbw_I1gP0dEE';
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const logEl = document.getElementById('log');
+        function log(msg, ok = true) { logEl.innerHTML += `<div style="color:${ok ? 'var(--success)' : 'var(--error)'}">${ok ? '✅' : '❌'} ${msg}</div>`; logEl.scrollTop = logEl.scrollHeight; }
+        function logInfo(msg) { logEl.innerHTML += `<div style="color:var(--amber)">⏳ ${msg}</div>`; logEl.scrollTop = logEl.scrollHeight; }
+
+        async function runSetup() {
+            const btn = document.getElementById('setup-btn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Working...';
+
+            try {
+                // 1. Check tables exist
+                logInfo('Checking game_state table...');
+                const { data: gs, error: gsErr } = await sb.from('game_state').select('id').limit(1);
+                if (gsErr) { log('game_state table missing! Run setup.sql first.', false); btn.textContent = '❌ Tables missing'; return; }
+                log('game_state table exists');
+
+                logInfo('Checking teams table...');
+                const { data: teams, error: tErr } = await sb.from('teams').select('id, name, points').limit(1);
+                if (tErr) {
+                    if (tErr.message.includes('points')) {
+                        log('teams table exists but "points" column missing. Adding it...', false);
+                        // Try inserting a record to test if points works
+                        logInfo('The "points" column needs to be added via SQL Editor.');
+                        logInfo('Please run: ALTER TABLE teams ADD COLUMN IF NOT EXISTS points INT NOT NULL DEFAULT 0;');
+                        log('Go to Supabase SQL Editor and run the above command.', false);
+                    } else {
+                        log('teams table missing! Run setup.sql first.', false);
+                    }
+                    btn.textContent = '🔄 Retry';
+                    btn.disabled = false;
+                    return;
+                }
+                log('teams table exists (with points column)');
+
+                logInfo('Checking clues table...');
+                const { data: clues } = await sb.from('clues').select('clue_number');
+                log(`clues table: ${clues ? clues.length : 0} clues`);
+
+                logInfo('Checking qr_codes table...');
+                const { data: qr } = await sb.from('qr_codes').select('qr_value');
+                log(`qr_codes table: ${qr ? qr.length : 0} codes`);
+
+                logInfo('Checking scan_logs table...');
+                const { count } = await sb.from('scan_logs').select('*', { count: 'exact', head: true });
+                log(`scan_logs table: ${count || 0} entries`);
+
+                // 2. Seed game state if needed
+                if (gs && gs.length === 0) {
+                    logInfo('Inserting initial game state...');
+                    await sb.from('game_state').insert({ id: 1, is_running: false });
+                    log('Game state initialized');
+                } else { log('Game state already set'); }
+
+                // 3. Seed clues if empty
+                if (!clues || clues.length === 0) {
+                    logInfo('Inserting 10 clues...');
+                    const clueData = [
+                        { clue_number: 0, clue_text: 'Welcome, Detective! Your journey begins here. Look for something that watches over the entrance.', hint: 'Check near the main entrance' },
+                        { clue_number: 1, clue_text: 'Find where stories are kept in neat rows, waiting to be discovered.', hint: 'Books are arranged on shelves...' },
+                        { clue_number: 2, clue_text: 'Where people gather to share ideas. Your next clue awaits where voices carry.', hint: 'A meeting room or auditorium perhaps?' },
+                        { clue_number: 3, clue_text: 'Liquid courage for the mind — where steam rises and energy flows.', hint: 'Follow the smell of coffee or tea' },
+                        { clue_number: 4, clue_text: 'Tick tock, the hands move in circles. Find the guardian of time.', hint: 'Look for a large clock' },
+                        { clue_number: 5, clue_text: 'Nature finds a way even indoors. Seek the green oasis.', hint: 'Indoor plants or a garden area' },
+                        { clue_number: 6, clue_text: 'Art speaks louder than words. Find where creativity is displayed.', hint: 'Look for artwork or a display wall' },
+                        { clue_number: 7, clue_text: 'The place where echoes of footsteps multiply. Go where paths cross.', hint: 'A stairwell or corridor intersection' },
+                        { clue_number: 8, clue_text: 'Almost there! Find the spot where achievements are celebrated.', hint: 'Trophy case or awards display' },
+                        { clue_number: 9, clue_text: 'The final frontier! Return to where it all began, but look UP this time!', hint: 'Look above at the starting location' },
+                    ];
+                    for (const c of clueData) { await sb.from('clues').upsert(c, { onConflict: 'clue_number' }); }
+                    log('10 clues inserted');
+                } else { log(`${clues.length} clues already exist`); }
+
+                // 4. Seed QR codes if empty
+                if (!qr || qr.length === 0) {
+                    logInfo('Inserting 20 QR codes...');
+                    const qrData = [
+                        { qr_value: 'HUNT-CLUE-001', qr_type: 'correct', clue_number: 1 },
+                        { qr_value: 'HUNT-CLUE-002', qr_type: 'correct', clue_number: 2 },
+                        { qr_value: 'HUNT-CLUE-003', qr_type: 'correct', clue_number: 3 },
+                        { qr_value: 'HUNT-CLUE-004', qr_type: 'correct', clue_number: 4 },
+                        { qr_value: 'HUNT-CLUE-005', qr_type: 'correct', clue_number: 5 },
+                        { qr_value: 'HUNT-CLUE-006', qr_type: 'correct', clue_number: 6 },
+                        { qr_value: 'HUNT-CLUE-007', qr_type: 'correct', clue_number: 7 },
+                        { qr_value: 'HUNT-CLUE-008', qr_type: 'correct', clue_number: 8 },
+                        { qr_value: 'HUNT-CLUE-009', qr_type: 'correct', clue_number: 9 },
+                        { qr_value: 'HUNT-CLUE-010', qr_type: 'correct', clue_number: 0 },
+                        { qr_value: 'HUNT-FAKE-001', qr_type: 'fake', fake_message: '🕵️ Nice try! But this is a decoy!' },
+                        { qr_value: 'HUNT-FAKE-002', qr_type: 'fake', fake_message: '🎭 Bamboozled! Try again!' },
+                        { qr_value: 'HUNT-FAKE-003', qr_type: 'fake', fake_message: '🐾 Wrong trail, Sherlock!' },
+                        { qr_value: 'HUNT-FAKE-004', qr_type: 'fake', fake_message: '🎪 Circus of wrong answers!' },
+                        { qr_value: 'HUNT-FAKE-005', qr_type: 'fake', fake_message: '👻 BOO! Ghost clue!' },
+                        { qr_value: 'HUNT-FAKE-006', qr_type: 'fake', fake_message: '🦆 Quack! Rubber duck!' },
+                        { qr_value: 'HUNT-FAKE-007', qr_type: 'fake', fake_message: '🍕 Just ordering pizza!' },
+                        { qr_value: 'HUNT-FAKE-008', qr_type: 'fake', fake_message: '🤖 Error 404: Clue not found!' },
+                        { qr_value: 'HUNT-FAKE-009', qr_type: 'fake', fake_message: '🎵 Never gonna give you the clue!' },
+                        { qr_value: 'HUNT-FAKE-010', qr_type: 'fake', fake_message: '🧙‍♂️ You shall not pass!' },
+                    ];
+                    for (const q of qrData) { await sb.from('qr_codes').upsert(q, { onConflict: 'qr_value' }); }
+                    log('20 QR codes inserted');
+                } else { log(`${qr.length} QR codes already exist`); }
+
+                // 5. Done
+                log('🎉 All checks passed! Database is ready.');
+                document.getElementById('done-box').style.display = 'block';
+                btn.style.display = 'none';
+
+            } catch (err) {
+                log(`Error: ${err.message}`, false);
+                btn.disabled = false;
+                btn.textContent = '🔄 Retry';
+            }
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', runSetup);
+    </script>
+</body>
+
+</html>

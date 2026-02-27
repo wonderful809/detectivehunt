@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ETRONS 2K26 — Admin Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="lib/supabase.min.js"></script>
+</head>
+
+<body>
+    <div class="bg-animation">
+        <div class="bg-grid"></div>
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+    </div>
+
+    <!-- ═══════ LOGIN ═══════ -->
+    <div id="admin-login" class="admin-container"
+        style="display:flex;align-items:center;justify-content:center;min-height:100vh;">
+        <div class="glass-card" style="max-width:400px;width:100%;">
+            <div style="text-align:center;margin-bottom:var(--space-xl);">
+                <span style="font-size:2.5rem;">🛡️</span>
+                <h2 style="margin-top:var(--space-sm);">Admin Panel</h2>
+                <p style="color:var(--text-muted);font-size:0.875rem;">ETRONS 2K26</p>
+            </div>
+            <div class="form-group">
+                <label>Admin Password</label>
+                <input type="password" id="admin-password" class="form-input" placeholder="Enter admin password"
+                    onkeydown="if(event.key==='Enter')adminLogin()">
+            </div>
+            <button class="btn btn-primary btn-block" onclick="adminLogin()">🔓 Access Dashboard</button>
+            <p id="admin-error" style="color:var(--error);text-align:center;margin-top:var(--space-md);display:none;">
+            </p>
+        </div>
+    </div>
+
+    <!-- ═══════ DASHBOARD ═══════ -->
+    <div id="admin-dashboard" class="admin-container" style="display:none;">
+        <div class="admin-header">
+            <h1>🛡️ ETRONS 2K26 — Admin</h1>
+            <div style="display:flex;align-items:center;gap:var(--space-md);">
+                <div class="game-status stopped" id="game-status-badge">
+                    <div class="status-dot"></div> Stopped
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="adminLogout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="admin-stats">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-teams">0</div>
+                <div class="stat-label">Teams</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-players">0</div>
+                <div class="stat-label">Players</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-scans">0</div>
+                <div class="stat-label">Total Scans</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-completed">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+
+        <!-- Game Timer Display -->
+        <div class="glass-card glass-card-sm" style="text-align:center;margin-bottom:var(--space-xl);">
+            <p style="color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">Game Timer
+            </p>
+            <div style="font-family:'Orbitron',monospace;font-size:2.5rem;font-weight:800;color:var(--amber);"
+                id="admin-timer">00:00</div>
+        </div>
+
+        <!-- Controls -->
+        <div class="admin-controls">
+            <button class="btn btn-success" onclick="startGame()" id="btn-start">▶️ Start Game</button>
+            <button class="btn btn-danger" onclick="endGame()" id="btn-stop">⏹ Stop Game</button>
+            <button class="btn btn-warning" onclick="confirmReset()">🔄 Reset All</button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('teams', this)">👥 Teams</button>
+            <button class="tab-btn" onclick="switchTab('leaderboard', this)">🏆 Ranks</button>
+            <button class="tab-btn" onclick="switchTab('scanlogs', this)">📋 Logs</button>
+        </div>
+
+        <!-- Teams Tab -->
+        <div id="tab-teams" class="tab-content">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>S.No</th>
+                            <th>Team Name</th>
+                            <th>Members</th>
+                            <th>Points</th>
+                            <th>Progress</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="teams-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Leaderboard Tab -->
+        <div id="tab-leaderboard" class="tab-content" style="display:none;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Team</th>
+                            <th>Points</th>
+                            <th>Clues</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Scan Logs Tab -->
+        <div id="tab-scanlogs" class="tab-content" style="display:none;">
+            <div class="data-table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Team</th>
+                            <th>QR Code</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scanlogs-table"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Confirm Modal -->
+    <div class="modal-overlay" id="reset-modal">
+        <div class="modal">
+            <h3>⚠️ Reset Everything?</h3>
+            <p style="color:var(--text-secondary);margin-bottom:var(--space-lg);">This will reset all teams' progress,
+                points, and times. Game will stop.</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeModal('reset-modal')">Cancel</button>
+                <button class="btn btn-danger" onclick="resetGame()">🔄 Reset All</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+    <script src="admin.js"></script>
+</body>
+
+</html>
