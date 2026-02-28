@@ -77,22 +77,23 @@ router.post('/scan', async (req, res) => {
                 });
             }
 
-            // ✅ CORRECT! +2 points
+            // ✅ CORRECT! +2 points — atomic update with progress guard to prevent race conditions
             const newProgress = expectedClue;
-            const newPoints = (team.points || 0) + 2;
-            const updateData = {
-                progress: newProgress,
-                points: newPoints,
-            };
+            const updateSet = { progress: newProgress };
+            if (!team.startTime) updateSet.startTime = new Date();
+            if (newProgress >= 10) updateSet.finishTime = new Date();
 
-            if (!team.startTime) {
-                updateData.startTime = new Date();
-            }
-            if (newProgress >= 10) {
-                updateData.finishTime = new Date();
-            }
+            const updatedTeam = await Team.findOneAndUpdate(
+                { _id: team._id, progress: team.progress },  // atomic guard: only if progress hasn't changed
+                { $set: updateSet, $inc: { points: 2 } },
+                { new: true }
+            );
 
-            const updatedTeam = await Team.findByIdAndUpdate(team._id, updateData, { new: true });
+            // If null, another request already processed this scan
+            if (!updatedTeam) {
+                await ScanLog.create({ teamId: team._id, qrValue: qrValue.trim(), result: 'already_scanned', clueNumber: clueNum });
+                return res.json({ success: false, type: 'already_scanned', message: 'Already processed! Move to the next clue.', team });
+            }
 
             await ScanLog.create({ teamId: team._id, qrValue: qrValue.trim(), result: 'success', clueNumber: clueNum });
 

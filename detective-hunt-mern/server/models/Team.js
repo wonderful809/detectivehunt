@@ -11,4 +11,16 @@ const teamSchema = new mongoose.Schema({
     disqualified: { type: Boolean, default: false },
 }, { timestamps: true });
 
+// Index for leaderboard sort performance
+teamSchema.index({ points: -1 });
+
+// Strip password and __v from all JSON responses
+teamSchema.set('toJSON', {
+    transform: (doc, ret) => {
+        delete ret.password;
+        delete ret.__v;
+        return ret;
+    }
+});
+
 module.exports = mongoose.model('Team', teamSchema);

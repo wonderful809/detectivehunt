@@ -41,7 +41,11 @@ app.get('*', (req, res) => {
 });
 
 // Connect to MongoDB & start server
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGODB_URI, {
+    maxPoolSize: 50,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+})
     .then(() => {
         console.log('✅ Connected to MongoDB');
         app.listen(PORT, () => {
